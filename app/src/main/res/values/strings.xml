@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">AVIF图像转码</string>
+    <string name="show_more">展开</string>
+    <string name="show_less">隐藏</string>
 </resources>

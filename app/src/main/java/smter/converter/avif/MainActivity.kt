@@ -8,6 +8,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import smter.converter.avif.ui.theme.AVIF图像转码Theme
 
@@ -91,7 +95,12 @@ fun MyApp(modifier: Modifier = Modifier) {
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
     var expanded by remember { mutableStateOf(false) }
-    val expandedPadding = if (expanded) 48.dp else 0.dp
+    val expandedPadding by animateDpAsState(
+        if (expanded) 48.dp else 0.dp, animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        )
+    )
     Surface(
         color = MaterialTheme.colorScheme.primaryContainer,
         modifier = modifier.padding(vertical = 4.dp, horizontal = 8.dp)
@@ -100,7 +109,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(bottom = expandedPadding)
+                    .padding(bottom = expandedPadding.coerceAtLeast(0.dp))
             ) {
                 Text("啊")
                 Text("$name!")

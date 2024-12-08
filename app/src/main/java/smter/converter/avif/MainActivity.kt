@@ -1,8 +1,12 @@
 package smter.converter.avif
 
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
+import android.Manifest
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,9 +28,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.arthenica.ffmpegkit.FFmpegKit
+import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.ReturnCode
 import smter.converter.avif.ui.theme.AVIF图像转码Theme
 import java.io.File
@@ -82,6 +90,12 @@ class MainActivity : ComponentActivity() {
         // 读取保存的导出文件夹路径
         val sharedPrefs = getPreferences(MODE_PRIVATE)
         outputDir = sharedPrefs.getString("output_dir", outputDir) ?: outputDir
+        // 启用 FFmpeg 日志回调
+        FFmpegKitConfig.enableLogCallback { log ->
+            if (log.message.contains("Permission denied")) {
+                Toast.makeText(this, log.message, Toast.LENGTH_SHORT).show()
+            }
+        }
         setContent {
             AVIF图像转码Theme {
                 MainScreen()
@@ -111,6 +125,7 @@ class MainActivity : ComponentActivity() {
 
     //主界面
     @Composable
+    @Preview
     fun MainScreen() {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
             Column(
@@ -136,6 +151,9 @@ class MainActivity : ComponentActivity() {
                     )
                     Button(
                         modifier = Modifier.padding(8.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        ),
                         onClick = { selectFolderLauncher.launch(null) }) { Text("选择输出文件夹") }
                 }
                 Card(
@@ -145,6 +163,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     Button(
                         modifier = Modifier.padding(8.dp),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondary
+                        ),
                         onClick = {
                             val intent = Intent(Intent.ACTION_GET_CONTENT)
                             intent.type = "image/*"
@@ -184,10 +205,12 @@ class MainActivity : ComponentActivity() {
 
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功，分享结果
+                Toast.makeText(this, "转换成功", Toast.LENGTH_SHORT).show()
                 shareOutput(outputPath)
             } else {
                 // 转换失败，处理错误
                 val message = "转换失败: ${session.failStackTrace}"
+                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
                 println(message)
             }
         }

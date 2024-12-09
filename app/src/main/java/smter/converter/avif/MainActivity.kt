@@ -233,7 +233,7 @@ class MainActivity : ComponentActivity() {
                 copyFileToOutputDir(File(outputPath), outputFileName, outputDir.toUri())
                 // 分享结果
                 Toast.makeText(this, "转换成功", Toast.LENGTH_SHORT).show()
-                shareOutput(outputPath.toUri())
+//                shareOutput(outputPath.toUri())
             } else {
                 // 转换失败，处理错误
                 val message = "转换失败: ${session.logs}"

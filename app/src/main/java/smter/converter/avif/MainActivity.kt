@@ -312,7 +312,7 @@ class MainActivity : ComponentActivity() {
             val outputFileName = "${UUID.randomUUID()}.avif"
             val outputPath = "${cacheDir}/${outputFileName}"
             val command =
-                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2  $outputPath"
+                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2 -pix_fmt yuv420p  $outputPath"
             val session = FFmpegKit.execute(command)
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功

@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
                 PERMISSIONS_REQUEST_CODE
             )
         } else {
-            Toast.makeText(this, "权限已授予", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@MainActivity, "权限已授予", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -180,9 +180,10 @@ class MainActivity : ComponentActivity() {
             floatingActionButton = {
                 FloatingActionButton(onClick = {
                     if (selectedImageUris.isEmpty())
-                        Toast.makeText(this, "请先选择图片", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "请先选择图片", Toast.LENGTH_SHORT).show()
                     else if (isLoading)
-                        Toast.makeText(this, "正在转换中 请稍候", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "正在转换中 请稍候", Toast.LENGTH_SHORT)
+                            .show()
                     else if (!isLoading) {
                         isLoading = true
                         //异步 开始转换
@@ -247,7 +248,11 @@ class MainActivity : ComponentActivity() {
                         ),
                         onClick = {
                             if (isLoading)
-                                Toast.makeText(this@MainActivity, "正在转换中 请稍候", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "正在转换中 请稍候",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             else {
                                 val intent = Intent(Intent.ACTION_GET_CONTENT)
                                 intent.type = "image/*"
@@ -312,11 +317,15 @@ class MainActivity : ComponentActivity() {
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功
                 copyFileToOutputDir(File(outputPath), outputFileName, outputDir.toUri())
-                Toast.makeText(this, "转换成功", Toast.LENGTH_SHORT).show()
+                ContextCompat.getMainExecutor(this).execute {
+                    Toast.makeText(this@MainActivity, "转换成功", Toast.LENGTH_SHORT).show()
+                }
             } else {
                 // 转换失败，处理错误
                 val message = "转换失败: ${session.logs}"
-                Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+                ContextCompat.getMainExecutor(this).execute {
+                    Toast.makeText(this@MainActivity, message, Toast.LENGTH_SHORT).show()
+                }
                 println(message)
             }
         }

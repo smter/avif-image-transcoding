@@ -15,18 +15,32 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
@@ -47,6 +61,11 @@ class MainActivity : ComponentActivity() {
 
     //使用可记忆的状态来存储输出目录的路径
     private var outputDir by mutableStateOf("")
+
+    //正在转换状态
+    private var isLoading by mutableStateOf(false)
+
+    private var ffmpegLog by mutableStateOf("")
 
     // 注册用于选择图片的ActivityResultLauncher
     private val pickImageLauncher =
@@ -96,9 +115,7 @@ class MainActivity : ComponentActivity() {
         outputDir = sharedPrefs.getString("output_dir", outputDir) ?: outputDir
         // 启用 FFmpeg 日志回调
         FFmpegKitConfig.enableLogCallback { log ->
-            if (log.message.contains("Permission denied")) {
-                Toast.makeText(this, log.message, Toast.LENGTH_SHORT).show()
-            }
+            ffmpegLog += log.message
         }
         setContent {
             AVIF图像转码Theme {
@@ -144,67 +161,140 @@ class MainActivity : ComponentActivity() {
 
 
     //主界面
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun MyApp(modifier: Modifier) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text("AVIF图像转码")
+                    },
+                    colors = topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.primary,
+                    ),
+                )
+            },
+            floatingActionButton = {
+                FloatingActionButton(onClick = {
+                    if (selectedImageUris.isEmpty())
+                        Toast.makeText(this, "请先选择图片", Toast.LENGTH_SHORT).show()
+                    else if (isLoading)
+                        Toast.makeText(this, "正在转换中 请稍候", Toast.LENGTH_SHORT).show()
+                    else if (!isLoading) {
+                        isLoading = true
+                        //异步 开始转换
+                        Thread {
+                            convertImages()
+                        }.start()
+//                        convertImages()
+                    }
+                }) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(8.dp),
+                            color = MaterialTheme.colorScheme.secondary,
+                        )
+                    } else
+                        Icon(Icons.Outlined.Bolt, contentDescription = "开始转换")
+                }
+            }
+        ) { innerpadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(vertical = 16.dp, horizontal = 8.dp),
+                    .padding(innerpadding),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp, horizontal = 8.dp)
+                        .padding(vertical = 10.dp, horizontal = 8.dp)
                 ) {
                     OutlinedTextField(
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Folder,
+                                contentDescription = "导出文件夹"
+                            )
+                        },
                         value = outputDir,
                         onValueChange = { /* 只读，不允许用户直接修改 */ },
                         label = { Text("导出文件夹") },
                         readOnly = true,
                         modifier = Modifier
-                            .padding(vertical = 16.dp, horizontal = 8.dp)
+                            .padding(vertical = 10.dp, horizontal = 8.dp)
                     )
                     Button(
-                        modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp),
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary
                         ),
-                        onClick = { selectFolderLauncher.launch(null) }) { Text("选择输出文件夹") }
+                        onClick = { selectFolderLauncher.launch(null) }) { Text("选择导出文件夹") }
                 }
                 Card(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(vertical = 16.dp, horizontal = 8.dp)
+                        .padding(vertical = 10.dp, horizontal = 8.dp)
                 ) {
                     Button(
-                        modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp),
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary
                         ),
                         onClick = {
-                            val intent = Intent(Intent.ACTION_GET_CONTENT)
-                            intent.type = "image/*"
-                            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                            pickImageLauncher.launch(intent)
+                            if (isLoading)
+                                Toast.makeText(this@MainActivity, "正在转换中 请稍候", Toast.LENGTH_SHORT).show()
+                            else {
+                                val intent = Intent(Intent.ACTION_GET_CONTENT)
+                                intent.type = "image/*"
+                                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                pickImageLauncher.launch(intent)
+                            }
                         }) {
                         Text("选择图片")
                     }
 
                     OutlinedTextField(
                         value = crfValue,
-                        onValueChange = { crfValue = it },
-                        label = { Text("质量 值") },
-                        modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
+                        onValueChange = { if (it.isNotEmpty()) crfValue = it },
+                        label = { Text("CRF 值") },
+                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp)
                     )
-                    Button(
-                        onClick = { convertImages() },
-                        modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                        colors = CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Text("转换")
+                        Text(
+                            "质量 值",
+                            modifier = Modifier.padding(8.dp),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Slider(
+                            value = 1 - (crfValue.toFloat() / 65),
+                            onValueChange = { crfValue = (65 - 65 * it).toInt().toString() },
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                        )
                     }
+                    OutlinedTextField(
+                        label = { Text("转换日志") },
+                        value = ffmpegLog,
+                        onValueChange = {},
+                        readOnly = true,
+                        textStyle = TextStyle(
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontFamily = FontFamily.Monospace
+                        ),
+                        modifier = Modifier
+                            .padding(vertical = 10.dp, horizontal = 8.dp)
+                            .fillMaxSize()
+                    )
                 }
             }
         }
@@ -217,15 +307,12 @@ class MainActivity : ComponentActivity() {
             val outputFileName = "${UUID.randomUUID()}.avif"
             val outputPath = "${cacheDir}/${outputFileName}"
             val command =
-                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 $outputPath"
+                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2  $outputPath"
             val session = FFmpegKit.execute(command)
-
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功
                 copyFileToOutputDir(File(outputPath), outputFileName, outputDir.toUri())
-                // 分享结果
                 Toast.makeText(this, "转换成功", Toast.LENGTH_SHORT).show()
-//                shareOutput(outputPath.toUri())
             } else {
                 // 转换失败，处理错误
                 val message = "转换失败: ${session.logs}"
@@ -233,6 +320,7 @@ class MainActivity : ComponentActivity() {
                 println(message)
             }
         }
+        isLoading = false
     }
 
     // 复制文件到 outputDir
@@ -266,7 +354,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     @Preview
-    fun preview() {
+    fun Preview() {
         MyApp(modifier = Modifier)
     }
 

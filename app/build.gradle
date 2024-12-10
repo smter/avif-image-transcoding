@@ -34,10 +34,17 @@ android {
     buildFeatures {
         compose true
     }
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 }
 
 dependencies {
-    implementation libs.ffmpeg.kit.full
+//    implementation libs.ffmpeg.kit.full
+    implementation files('libs/ffmpeg-kit.aar')
+    implementation libs.smart.exception.java
     implementation libs.androidx.material.icons.extended
     implementation libs.androidx.core.ktx
     implementation libs.androidx.lifecycle.runtime.ktx

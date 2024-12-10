@@ -1,15 +1,12 @@
 package smter.converter.avif
 
+import android.Manifest
+import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
-import android.Manifest
-import android.content.ContentResolver
-import android.content.ContentValues
-import android.provider.DocumentsContract
-import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,7 +31,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -42,16 +38,12 @@ import com.arthenica.ffmpegkit.FFmpegKitConfig
 import com.arthenica.ffmpegkit.ReturnCode
 import smter.converter.avif.ui.theme.AVIF图像转码Theme
 import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import java.util.UUID
-import kotlin.io.path.Path
-import kotlin.io.path.deleteIfExists
 
 class MainActivity : ComponentActivity() {
 
     private var selectedImageUris by mutableStateOf<List<Uri>>(emptyList())
-    private var crfValue by mutableStateOf("75") // 默认CRF值
+    private var crfValue by mutableStateOf("28") // 默认CRF值
 
     //使用可记忆的状态来存储输出目录的路径
     private var outputDir by mutableStateOf("")
@@ -222,10 +214,10 @@ class MainActivity : ComponentActivity() {
     private fun convertImages() {
         for (uri in selectedImageUris) {
             val inputPath = FFmpegKitConfig.getSafParameterForRead(this, uri)
-            val outputFileName = "${UUID.randomUUID()}.webp"
+            val outputFileName = "${UUID.randomUUID()}.avif"
             val outputPath = "${cacheDir}/${outputFileName}"
             val command =
-                "-i $inputPath -q ${crfValue.toInt()} -b:v 0 $outputPath"
+                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 $outputPath"
             val session = FFmpegKit.execute(command)
 
             if (ReturnCode.isSuccess(session.returnCode)) {

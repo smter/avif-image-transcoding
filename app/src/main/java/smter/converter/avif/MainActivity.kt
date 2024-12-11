@@ -23,6 +23,7 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -46,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -259,7 +262,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(defaultPadding)
                     ) {
                         Button(
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.secondary
                             ),
                             onClick = {
@@ -311,7 +314,8 @@ class MainActivity : ComponentActivity() {
                         readOnly = true,
                         textStyle = TextStyle(
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontFamily = FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = TextUnit(11F, TextUnitType.Sp)
                         ),
                         modifier = Modifier
                             .padding(defaultPadding)
@@ -326,6 +330,10 @@ class MainActivity : ComponentActivity() {
     private fun convertImages() {
         //清除旧的日志
         ffmpegLog = ""
+        //清除旧的缓存
+        if (cacheDir.exists()) {
+            cacheDir.deleteRecursively()
+        }
         for (uri in selectedImageUris) {
             val inputPath = FFmpegKitConfig.getSafParameterForRead(this, uri)
             val outputFileName = "${UUID.randomUUID()}.avif"
@@ -365,16 +373,13 @@ class MainActivity : ComponentActivity() {
             outputStream.close()
         }
         shareOutput(sourceFile)
-        //删除sourceFile 其实就是缓存文件 释放空间
-        sourceFile.delete()
-
     }
 
     //分享输出
     private fun shareOutput(outputPath: File) {
         val contentUri=FileProvider.getUriForFile(this,"smter.converter.avif.fileprovider",outputPath)
         val shareIntent = Intent(Intent.ACTION_SEND)
-        shareIntent.type = "image/webp"
+        shareIntent.type = "image/jpeg"
         shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri)
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(Intent.createChooser(shareIntent, "分享图像"))

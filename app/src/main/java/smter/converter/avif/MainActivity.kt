@@ -1,6 +1,7 @@
 package smter.converter.avif
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -12,12 +13,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,8 +68,9 @@ class MainActivity : ComponentActivity() {
 
     //正在转换状态
     private var isLoading by mutableStateOf(false)
-
+    //FFmpeg 日志
     private var ffmpegLog by mutableStateOf("")
+    private val defaultPadding= PaddingValues(vertical = 10.dp, horizontal = 8.dp)
 
     // 注册用于选择图片的ActivityResultLauncher
     private val pickImageLauncher =
@@ -122,6 +127,8 @@ class MainActivity : ComponentActivity() {
                 MyApp(modifier = Modifier)
             }
         }
+        //接受分享内容
+        handleSharedIntent(intent)
         //检查权限
         if (ContextCompat.checkSelfPermission(
                 this,
@@ -140,21 +147,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 处理共享意图触发
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        handleSharedIntent(intent)
-    }
-
     // 处理共享意图函数
+    @SuppressLint("NewApi")
     private fun handleSharedIntent(intent: Intent) {
-        if (intent.action == Intent.ACTION_SEND) {
+        if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_GET_CONTENT) {
             //处理单个图片
-            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            val uri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
             uri?.let { selectedImageUris = listOf(it) }
         } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
             //处理多张图片
-            val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            val uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
             uris?.let { selectedImageUris = it }
         }
     }
@@ -213,7 +215,7 @@ class MainActivity : ComponentActivity() {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 10.dp, horizontal = 8.dp)
+                        .padding(defaultPadding)
                 ) {
                     OutlinedTextField(
                         leadingIcon = {
@@ -227,10 +229,10 @@ class MainActivity : ComponentActivity() {
                         label = { Text("导出文件夹") },
                         readOnly = true,
                         modifier = Modifier
-                            .padding(vertical = 10.dp, horizontal = 8.dp)
+                            .padding(defaultPadding)
                     )
                     Button(
-                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
+                        modifier = Modifier.padding(defaultPadding),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondary
                         ),
@@ -239,40 +241,53 @@ class MainActivity : ComponentActivity() {
                 Card(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(vertical = 10.dp, horizontal = 8.dp)
+                        .padding(defaultPadding)
                 ) {
-                    Button(
-                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp),
-                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        ),
-                        onClick = {
-                            if (isLoading)
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "正在转换中 请稍候",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            else {
-                                val intent = Intent(Intent.ACTION_GET_CONTENT)
-                                intent.type = "image/*"
-                                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
-                                pickImageLauncher.launch(intent)
+                    BadgedBox(
+                        badge = {
+                            if (selectedImageUris.size > 0) {
+                                Badge(
+                                    containerColor = MaterialTheme.colorScheme.onSecondary,
+                                    contentColor = MaterialTheme.colorScheme.secondary
+                                ) {
+                                    Text(selectedImageUris.size.toString())
+                                }
                             }
-                        }) {
-                        Text("选择图片")
+                        },
+                        modifier = Modifier.padding(defaultPadding)
+                    ) {
+                        Button(
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondary
+                            ),
+                            onClick = {
+                                if (isLoading)
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "正在转换中 请稍候",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                else {
+                                    val intent = Intent(Intent.ACTION_GET_CONTENT)
+                                    intent.type = "image/*"
+                                    intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+                                    pickImageLauncher.launch(intent)
+                                }
+                            }) {
+                            Text("选择图片")
+                        }
                     }
 
                     OutlinedTextField(
                         value = crfValue,
                         onValueChange = { if (it.isNotEmpty()) crfValue = it },
                         label = { Text("CRF 值") },
-                        modifier = Modifier.padding(vertical = 10.dp, horizontal = 8.dp)
+                        modifier = Modifier.padding(defaultPadding)
                     )
                     ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 10.dp, horizontal = 8.dp),
+                            .padding(defaultPadding),
                         colors = CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Text(
@@ -297,7 +312,7 @@ class MainActivity : ComponentActivity() {
                             fontFamily = FontFamily.Monospace
                         ),
                         modifier = Modifier
-                            .padding(vertical = 10.dp, horizontal = 8.dp)
+                            .padding(defaultPadding)
                             .fillMaxSize()
                     )
                 }

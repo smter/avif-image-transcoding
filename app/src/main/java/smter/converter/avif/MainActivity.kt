@@ -49,6 +49,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -68,9 +69,10 @@ class MainActivity : ComponentActivity() {
 
     //正在转换状态
     private var isLoading by mutableStateOf(false)
+
     //FFmpeg 日志
     private var ffmpegLog by mutableStateOf("")
-    private val defaultPadding= PaddingValues(vertical = 10.dp, horizontal = 8.dp)
+    private val defaultPadding = PaddingValues(vertical = 10.dp, horizontal = 8.dp)
 
     // 注册用于选择图片的ActivityResultLauncher
     private val pickImageLauncher =
@@ -322,16 +324,18 @@ class MainActivity : ComponentActivity() {
 
     //转码
     private fun convertImages() {
+        //清除旧的日志
+        ffmpegLog = ""
         for (uri in selectedImageUris) {
             val inputPath = FFmpegKitConfig.getSafParameterForRead(this, uri)
             val outputFileName = "${UUID.randomUUID()}.avif"
-            val outputPath = "${cacheDir}/${outputFileName}"
+            val cacheFile = "${cacheDir}/${outputFileName}"
             val command =
-                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2 -pix_fmt yuv420p  $outputPath"
+                "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2 -pix_fmt yuv420p  $cacheFile"
             val session = FFmpegKit.execute(command)
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功
-                copyFileToOutputDir(File(outputPath), outputFileName, outputDir.toUri())
+                copyFileToOutputDir(File(cacheFile), outputFileName, outputDir.toUri())
                 ContextCompat.getMainExecutor(this).execute {
                     Toast.makeText(this@MainActivity, "转换成功", Toast.LENGTH_SHORT).show()
                 }
@@ -360,13 +364,18 @@ class MainActivity : ComponentActivity() {
             outputStream.write(sourceFile.readBytes())
             outputStream.close()
         }
+        shareOutput(sourceFile)
+        //删除sourceFile 其实就是缓存文件 释放空间
+        sourceFile.delete()
+
     }
 
     //分享输出
-    private fun shareOutput(outputPath: Uri) {
+    private fun shareOutput(outputPath: File) {
+        val contentUri=FileProvider.getUriForFile(this,"smter.converter.avif.fileprovider",outputPath)
         val shareIntent = Intent(Intent.ACTION_SEND)
-        shareIntent.type = "image/avif"
-        shareIntent.putExtra(Intent.EXTRA_STREAM, outputPath)
+        shareIntent.type = "image/webp"
+        shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri)
         shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         startActivity(Intent.createChooser(shareIntent, "分享图像"))
     }
@@ -381,6 +390,5 @@ class MainActivity : ComponentActivity() {
     fun Preview() {
         MyApp(modifier = Modifier)
     }
-
-
 }
+

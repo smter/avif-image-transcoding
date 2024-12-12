@@ -7,9 +7,11 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,9 +52,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.TextUnitType
 import androidx.compose.ui.unit.dp
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
+import androidx.core.content.IntentCompat
+import androidx.core.net.toFile
 import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import com.arthenica.ffmpegkit.FFmpegKit
@@ -116,10 +119,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // 在 super.onCreate() 之后初始化 outputDir
-        outputDir = getExternalFilesDir(null)?.absolutePath ?: ""
+        outputDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES)?.path ?: ""
         // 读取保存的导出文件夹路径
         val sharedPrefs = getPreferences(MODE_PRIVATE)
         outputDir = sharedPrefs.getString("output_dir", outputDir) ?: outputDir
@@ -127,6 +131,7 @@ class MainActivity : ComponentActivity() {
         FFmpegKitConfig.enableLogCallback { log ->
             ffmpegLog += log.message
         }
+        enableEdgeToEdge()
         setContent {
             AVIF图像转码Theme {
                 MyApp(modifier = Modifier)
@@ -134,35 +139,62 @@ class MainActivity : ComponentActivity() {
         }
         //接受分享内容
         handleSharedIntent(intent)
-        //检查权限
-        if (ContextCompat.checkSelfPermission(
+        when {
+            ContextCompat.checkSelfPermission(
                 this,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            //请求权限
-            val PERMISSIONS_REQUEST_CODE = 1
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE),
-                PERMISSIONS_REQUEST_CODE
-            )
-        } else {
-            Toast.makeText(this@MainActivity, "权限已授予", Toast.LENGTH_SHORT).show()
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED -> {
+                // You can use the API that requires the permission.
+            }
+
+            else -> {
+                // You can directly ask for the permission.
+                // The registered ActivityResultCallback gets the result of this request.
+                requestPermissionLauncher.launch(
+                    Manifest.permission.READ_MEDIA_IMAGES
+                )
+            }
         }
     }
+
+    val requestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission is granted. Continue the action or workflow in your
+                // app.
+            } else {
+                // Explain to the user that the feature is unavailable because the
+                // feature requires a permission that the user has denied. At the
+                // same time, respect the user's decision. Don't link to system
+                // settings in an effort to convince the user to change their
+                // decision.
+                Toast.makeText(this@MainActivity, "权限未授予", Toast.LENGTH_SHORT).show()
+            }
+        }
 
     // 处理共享意图函数
     @SuppressLint("NewApi")
     private fun handleSharedIntent(intent: Intent) {
         if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_GET_CONTENT) {
             //处理单个图片
-            val uri = intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            uri?.let { selectedImageUris = listOf(it) }
+            val uri = IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java)
+            uri?.let {
+                selectedImageUris = listOf(it)
+            }
         } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
             //处理多张图片
-            val uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            uris?.let { selectedImageUris = it }
+            val uris = IntentCompat.getParcelableArrayListExtra(
+                intent,
+                Intent.EXTRA_STREAM,
+                Uri::class.java
+            )
+            uris?.let {
+                it.forEach { uri ->
+                    selectedImageUris = it
+                }
+            }
         }
     }
 
@@ -363,7 +395,9 @@ class MainActivity : ComponentActivity() {
     private fun copyFileToOutputDir(sourceFile: File, fileName: String, outputDir: Uri) {
         val contentResolver: ContentResolver = this.contentResolver
         // 获取 DocumentFile 对象，表示选定的目录
-        val directory = DocumentFile.fromTreeUri(this, outputDir)
+        val directory = if (outputDir.path?.startsWith("/") == true) DocumentFile.fromFile(
+            getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!.toUri().toFile()
+        ) else DocumentFile.fromTreeUri(this, outputDir)
         // 使用 DocumentsContract 创建新文件
         val newFileUri =
             directory?.createFile("image/webp", fileName)
@@ -377,7 +411,8 @@ class MainActivity : ComponentActivity() {
 
     //分享输出
     private fun shareOutput(outputPath: File) {
-        val contentUri=FileProvider.getUriForFile(this,"smter.converter.avif.fileprovider",outputPath)
+        val contentUri =
+            FileProvider.getUriForFile(this, "smter.converter.avif.fileprovider", outputPath)
         val shareIntent = Intent(Intent.ACTION_SEND)
         shareIntent.type = "image/jpeg"
         shareIntent.putExtra(Intent.EXTRA_STREAM, contentUri)

@@ -1,6 +1,8 @@
 [versions]
+activity = "1.9.3"
 agp = "8.7.3"
 ffmpegKitFull = "6.0-2.LTS"
+fragment = "1.8.5"
 kotlin = "2.0.0"
 coreKtx = "1.15.0"
 junit = "4.13.2"
@@ -13,7 +15,9 @@ documentfile = "1.0.1"
 smartExceptionJava = "0.2.1"
 
 [libraries]
+androidx-activity = { module = "androidx.activity:activity", version.ref = "activity" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-fragment = { module = "androidx.fragment:fragment", version.ref = "fragment" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 ffmpeg-kit-full = { module = "com.arthenica:ffmpeg-kit-full", version.ref = "ffmpegKitFull" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

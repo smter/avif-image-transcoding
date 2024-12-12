@@ -395,7 +395,7 @@ class MainActivity : ComponentActivity() {
     private fun copyFileToOutputDir(sourceFile: File, fileName: String, outputDir: Uri) {
         val contentResolver: ContentResolver = this.contentResolver
         // 获取 DocumentFile 对象，表示选定的目录
-        val directory = if (outputDir.path?.startsWith("/") == true) DocumentFile.fromFile(
+        val directory = if (outputDir.path?.startsWith("/tree") == false) DocumentFile.fromFile(
             getExternalFilesDir(Environment.DIRECTORY_PICTURES)!!.toUri().toFile()
         ) else DocumentFile.fromTreeUri(this, outputDir)
         // 使用 DocumentsContract 创建新文件

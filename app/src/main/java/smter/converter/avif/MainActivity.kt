@@ -16,9 +16,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.outlined.Bolt
@@ -37,12 +39,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -69,12 +74,14 @@ class MainActivity : ComponentActivity() {
 
     private var selectedImageUris by mutableStateOf<List<Uri>>(emptyList())
     private var crfValue by mutableStateOf("28") // 默认CRF值
+    private val quality by derivedStateOf { (1 - (crfValue.toFloat() / 65)) * 100 }
 
     //使用可记忆的状态来存储输出目录的路径
     private var outputDir by mutableStateOf("")
 
     //正在转换状态
     private var isLoading by mutableStateOf(false)
+    private var isAVIF by mutableStateOf(true)
 
     //FFmpeg 日志
     private var ffmpegLog by mutableStateOf("")
@@ -217,21 +224,28 @@ class MainActivity : ComponentActivity() {
                 )
             },
             floatingActionButton = {
-                FloatingActionButton(onClick = {
-                    if (selectedImageUris.isEmpty())
-                        Toast.makeText(this@MainActivity, "请先选择图片", Toast.LENGTH_SHORT).show()
-                    else if (isLoading)
-                        Toast.makeText(this@MainActivity, "正在转换中 请稍候", Toast.LENGTH_SHORT)
-                            .show()
-                    else if (!isLoading) {
-                        isLoading = true
-                        //异步 开始转换
-                        Thread {
-                            convertImages()
-                        }.start()
+                FloatingActionButton(
+                    shape = MaterialTheme.shapes.large,
+                    onClick = {
+                        if (selectedImageUris.isEmpty())
+                            Toast.makeText(this@MainActivity, "请先选择图片", Toast.LENGTH_SHORT)
+                                .show()
+                        else if (isLoading)
+                            Toast.makeText(
+                                this@MainActivity,
+                                "正在转换中 请稍候",
+                                Toast.LENGTH_SHORT
+                            )
+                                .show()
+                        else if (!isLoading) {
+                            isLoading = true
+                            //异步 开始转换
+                            Thread {
+                                convertImages()
+                            }.start()
 //                        convertImages()
-                    }
-                }) {
+                        }
+                    }) {
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.padding(8.dp),
@@ -261,6 +275,7 @@ class MainActivity : ComponentActivity() {
                                 contentDescription = "导出文件夹"
                             )
                         },
+                        shape = MaterialTheme.shapes.extraLarge,
                         value = outputDir,
                         onValueChange = { /* 只读，不允许用户直接修改 */ },
                         label = { Text("导出文件夹") },
@@ -314,33 +329,63 @@ class MainActivity : ComponentActivity() {
                             Text("选择图片")
                         }
                     }
-
-                    OutlinedTextField(
-                        value = crfValue,
-                        onValueChange = { if (it.isNotEmpty()) crfValue = it },
-                        label = { Text("CRF 值") },
-                        modifier = Modifier.padding(defaultPadding)
-                    )
                     ElevatedCard(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(defaultPadding),
+                        shape = MaterialTheme.shapes.extraLarge,
                         colors = CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Text(
-                            "质量 值",
+                            "质量值: ${if (isAVIF) crfValue else quality.toInt()}",
                             modifier = Modifier.padding(8.dp),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontFamily = FontFamily.Monospace,
                         )
                         Slider(
-                            value = 1 - (crfValue.toFloat() / 65),
+                            value = quality / 100,
                             onValueChange = { crfValue = (65 - 65 * it).toInt().toString() },
                             modifier = Modifier
-                                .padding(end = 8.dp)
+                                .padding(end = 28.dp)
                         )
+                    }
+                    ElevatedCard(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(defaultPadding),
+                        shape = MaterialTheme.shapes.extraLarge,
+                        colors = CardDefaults.cardColors(contentColor = MaterialTheme.colorScheme.surfaceVariant),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.toggleable(
+                                value = !isAVIF,
+                                onValueChange = {
+                                    isAVIF = !it
+                                },
+                                enabled = true
+                            )
+                        ) {
+                            Text(
+                                "是否转码成 WEBP",
+                                modifier = Modifier
+                                    .padding(8.dp)
+                                    .weight(1f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontFamily = FontFamily.Monospace,
+                                maxLines = 1,
+                            )
+                            Switch(
+                                checked = !isAVIF,
+                                onCheckedChange = null,
+                                modifier = Modifier
+                                    .padding(8.dp)
+                            )
+                        }
                     }
                     OutlinedTextField(
                         label = { Text("转换日志") },
+                        shape = MaterialTheme.shapes.extraLarge,
                         value = ffmpegLog,
                         onValueChange = {},
                         readOnly = true,
@@ -368,10 +413,12 @@ class MainActivity : ComponentActivity() {
         }
         for (uri in selectedImageUris) {
             val inputPath = FFmpegKitConfig.getSafParameterForRead(this, uri)
-            val outputFileName = "${UUID.randomUUID()}.avif"
+            val outputFileName =
+                if (isAVIF) "${UUID.randomUUID()}.avif" else "${UUID.randomUUID()}.webp"
             val cacheFile = "${cacheDir}/${outputFileName}"
-            val command =
+            val command = if (isAVIF)
                 "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2 -pix_fmt yuv420p  $cacheFile"
+            else "-i $inputPath -q ${quality.toInt()}  -pix_fmt yuv420p  $cacheFile"
             val session = FFmpegKit.execute(command)
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功

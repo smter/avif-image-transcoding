@@ -418,7 +418,7 @@ class MainActivity : ComponentActivity() {
             val cacheFile = "${cacheDir}/${outputFileName}"
             val command = if (isAVIF)
                 "-i $inputPath -crf ${crfValue.toInt()} -b:v 0 -threads 4 -cpu-used 4 -row-mt 1 -tiles 2x2 -pix_fmt yuv420p  $cacheFile"
-            else "-i $inputPath -q ${quality.toInt()}  -pix_fmt yuv420p  $cacheFile"
+            else "-i $inputPath -q ${quality.toInt()}  -pix_fmt bgra $cacheFile"
             val session = FFmpegKit.execute(command)
             if (ReturnCode.isSuccess(session.returnCode)) {
                 // 转换成功
@@ -453,7 +453,9 @@ class MainActivity : ComponentActivity() {
             outputStream.write(sourceFile.readBytes())
             outputStream.close()
         }
-        shareOutput(sourceFile)
+        //避免多个图片批量转换一直弹出分享菜单
+        if (selectedImageUris.size == 1)
+            shareOutput(sourceFile)
     }
 
     //分享输出

@@ -28,19 +28,8 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleRelease
     - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload APK to Release
-      uses: actions/upload-artifact@v4
-      with:     
-        path: app/build/outputs/apk/release/app-release.apk
-        name: app-release.apk
-        
+        body: Bump Version
+        files: |
+          app/build/outputs/apk/release/app-release.apk

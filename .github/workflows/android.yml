@@ -27,14 +27,15 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew assemble
-    - uses: r0adkll/sign-android-release@v1
+    - uses: ilharp/sign-android-release@v1 
       name: 签名
       with:
-        releaseDirectory: app/build/outputs/apk/release
-        signingKeyBase64: ${{ secrets.KEYSTORE_FILE }}
-        alias: ${{ secrets.KEY_ALIAS }}
+        releaseDir: app/build/outputs/apk/release
+        signingKey: ${{ secrets.KEYSTORE_FILE }}
+        keyAlias: ${{ secrets.KEY_ALIAS }}
         keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
         keyPassword: ${{ secrets.KEY_PASSWORD }}
+        buildToolsVersion: 33.0.0
     - run: mv ${{steps.sign_app.outputs.signedReleaseFile}} app/build/outputs/apk/release/app-release.apk
     - name: 上传结果
       uses: actions/upload-artifact@v4

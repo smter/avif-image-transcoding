@@ -1,0 +1,34 @@
+name: Android CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+    - name: Build Signed APK
+      uses: victorbnl/build-signed-apk@main
+      with:
+        java_version: '21'
+        keystore_b64: ${{ secrets.KEYSTORE_FILE }}
+        keystore_password: ${{ secrets.KEYSTORE_PASSWORD }}
+        key_alias: ${{ secrets.KEY_ALIAS }}
+        key_password: ${{ secrets.KEY_PASSWORD }}
+    - name: 上传结果
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release.apk
+        path: app/build/outputs/apk/release/app-release.apk

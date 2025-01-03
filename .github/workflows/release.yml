@@ -1,0 +1,26 @@
+name: Android Release
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build Signed APK
+      uses: victorbnl/build-signed-apk@main
+      with:
+        java_version: '21'
+        keystore_b64: ${{ secrets.KEYSTORE_FILE }}
+        keystore_password: ${{ secrets.KEYSTORE_PASSWORD }}
+        key_alias: ${{ secrets.KEY_ALIAS }}
+        key_password: ${{ secrets.KEY_PASSWORD }}
+    - name: Releases
+      uses: softprops/action-gh-release@v2
+      with:
+        body: Bump Version
+        files: |
+          app/build/outputs/apk/release/app-release.apk

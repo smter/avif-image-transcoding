@@ -19,24 +19,14 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
         cache: gradle
-    - name: Setup Android SDK Tools
-      uses: android-actions/setup-android@v3.2.2
-    - name: Set ANDROID_HOME
-      run: |
-        echo "ANDROID_HOME=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
-    - uses: gradle/gradle-build-action@v2
+    - name: Build Signed APK
+      uses: victorbnl/build-signed-apk@main
       with:
-       gradle-version: current
-       arguments: assembleRelease
-    - uses: ilharp/sign-android-release@v1 
-      name: 签名
-      with:
-        releaseDir: app/build/outputs/apk/release
-        signingKey: ${{ secrets.KEYSTORE_FILE }}
-        keyAlias: ${{ secrets.KEY_ALIAS }}
-        keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword: ${{ secrets.KEY_PASSWORD }}
-        buildToolsVersion: 33.0.0
+        keystore_b64: ${{ secrets.KEYSTORE_FILE }}
+        keystore_password: ${{ secrets.KEYSTORE_PASSWORD }}
+        key_alias: ${{ secrets.KEY_ALIAS }}
+        key_password: ${{ secrets.KEY_PASSWORD }}
+    - run: tree app/build/outputs/apk/release
     - run: mv ${{steps.sign_app.outputs.signedReleaseFile}} app/build/outputs/apk/release/app-release.apk
     - name: 上传结果
       uses: actions/upload-artifact@v4

@@ -26,10 +26,10 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle
-      run: ./gradlew assembleRelease
+      run: ./gradlew assemble
     - name: 打印目录
       run: |
-        tree
+        tree app/build/outputs/apk
         
     - name: Upload ARM64
       uses: actions/upload-artifact@v4
